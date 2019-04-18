@@ -1,5 +1,6 @@
 import ROOT
-from ROOTDefs import build_event_instance, Tree, reco_et_roc_curve
+from ROOTDefs import build_event_instance, Tree, set_po_tree_parameters, prepare_event
+from NNDefs import get_layer_weights_from_txt
 from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend, kRed, kBlue, kGreen, kMagenta, kOrange
 import numpy as np
 import os
@@ -10,40 +11,22 @@ import math
 
 c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
-fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'ztt_Output_formatted.root')
+fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'ztt_Output_formatted.root')
 fsig = ROOT.TFile(fsig_path)
 tsig = Tree(fsig.Get("mytree"))
 
-# Values obtained from training network in LayerWeights.py
-# None
-layer_weights = [3.411339, 1.0414326, 1.3924104, 3.3474362, 1.4786445]
-shift_et = 0
+# Get layer weights and shift et for given scheme from text file
+layer_weights, shift_et = get_layer_weights_from_txt(1)
+print(layer_weights)
+print(shift_et)
 
-# Bias
-#layer_weights = [1.4866527, 0.2245883, 0.9129165, 1.7364172, 0.9893436]
-#shift_et = 17.115534
-
-# Shift
-#layer_weights = [1.8113599, 0.36242402, 0.99382144, 2.0082638, 1.0719023]
-#shift_et = 14.227625502888978
-
-tsig.set_layer_dim(1, 12, 3)
-tsig.set_layer_dim(2, 12, 3)
-tsig.set_seed_region(4, 7, 1, 1)
-new_adj_dict = {4: -1, 5: 0, 6: 0, 7: 1}
-tsig.set_adjacent_eta_cells(new_adj_dict)
-#tsig.set_reco_et_layer_weights(layer_weights)
+set_po_tree_parameters(tsig)
 sigentries = tsig.entries
 
-fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'output_MB80_formatted.root')
+fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'output_MB80_formatted.root')
 fback = ROOT.TFile(fback_path)
 tback = Tree(fback.Get("mytree"))
 backentries = tback.entries
-
-
-#tsig.set_reco_et_layer_weights([-6.31, 3.29, 1.59, -0.84, 1.20])
-tsig.get_entry(0)
-event = build_event_instance(tsig, 1, 1, 0)
 
 histo_reco = TH1F("Initial", "Reconstructed Et", 100, -100, 100)
 histo_reco_weighted = TH1F("Weighted", "Weighted Reconstructed Et", 100, -100, 100)
@@ -55,9 +38,7 @@ sum_et = 0
 num = 0
 
 for i in range(sigentries):
-    tsig.get_entry(i)
-    event = build_event_instance(tsig, 1, 1, 0)
-    event.phi_orient()
+    event = prepare_event(tsig, i, 1, 1, 0)
 
     reco_et = event.reco_et
 
@@ -75,9 +56,6 @@ for i in range(sigentries):
     if true_et < 20.:
         continue
 
-    sum_et += reco_et - true_et
-    num += 1
-
     res_et = reco_et - true_et
     res_et_weighted = reco_et_weighted - true_et
 
@@ -87,12 +65,12 @@ for i in range(sigentries):
     histo_res.Fill(res_et)
     histo_res_weighted.Fill(res_et_weighted)
 
-print(num)
-print(sum_et/num)
-
-file_name = 'EtRes.pdf'
+name_prepend = ''
+file_name = name_prepend + 'EtRes.pdf'
 
 histo_reco.Draw()
+
+histo_reco.SetTitle(name_prepend + ' Reconstructed Et')
 histo_reco.GetYaxis().SetRange(0, 450)
 histo_reco.GetXaxis().SetTitle('Reconstructed Et')
 histo_reco.GetYaxis().SetTitle('Events')
@@ -114,8 +92,8 @@ c1.Print(file_name+'(')
 
 histo_res.Draw()
 
-histo_res.SetTitle('Signal Et Resolution')
-histo_res.GetXaxis().SetTitle('Resolution')
+histo_res.SetTitle(name_prepend + ' Signal Reco - True Et')
+histo_res.GetXaxis().SetTitle('Reco - True Et')
 histo_res.GetYaxis().SetTitle('Events')
 histo_res.SetLineColor(kRed)
 histo_res.SetAxisRange(0, 625, 'Y')
@@ -127,8 +105,8 @@ st.SetY1NDC(.6)
 st.SetY2NDC(.75)
 
 leg1 = TLegend(0.1, 0.8, 0.4, 0.9)
-leg1.AddEntry(histo_res, 'Initial Resolution', 'l')
-leg1.AddEntry(histo_res_weighted, 'Network Trained Resolution', 'l')
+leg1.AddEntry(histo_res, 'Initial Reco - True Et', 'l')
+leg1.AddEntry(histo_res_weighted, 'Network Trained Reco - True Et', 'l')
 leg1.Draw()
 
 c1.Print(file_name+')')

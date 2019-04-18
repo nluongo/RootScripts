@@ -1,5 +1,6 @@
 import ROOT
-from ROOTDefs import build_event_instance, Tree, apply_tree_cut, reco_et_tree_histogram
+from ROOTDefs import build_event_instance, Tree, apply_tree_cut, reco_et_tree_histogram, set_po_tree_parameters
+from NNDefs import get_layer_weights_from_txt
 from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend, kRed
 import numpy as np
 import os
@@ -7,51 +8,43 @@ import math
 
 c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
-fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'ztt_Output_formatted.root')
+fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'ztt_Output_formatted.root')
 fsig = ROOT.TFile(fsig_path)
 tsig = Tree(fsig.Get("mytree"))
-tsig.set_layer_dim(1, 12, 3)
-tsig.set_layer_dim(2, 12, 3)
-tsig.set_seed_region(4, 7, 1, 1)
+
+set_po_tree_parameters(tsig)
 sigentries = tsig.entries
 
-fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'output_MB80_formatted.root')
+fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'output_MB80_formatted.root')
 fback = ROOT.TFile(fback_path)
 tback = Tree(fback.Get("mytree"))
 backentries = tback.entries
 
-temp_file_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'temp_file.root')
+temp_file_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'temp_file.root')
 temp_file = TFile(temp_file_path, 'recreate')
 
-tsig_cut = apply_tree_cut(tsig, 'event.true_tau_pt > 20000', temp_file)
-tsig_cut.set_layer_dim(1, 12, 3)
-tsig_cut.set_layer_dim(2, 12, 3)
-tsig_cut.set_seed_region(4, 7, 1, 1)
+tsig = apply_tree_cut(tsig, 'event.true_tau_pt > 20000', temp_file)
+set_po_tree_parameters(tsig)
+sigentries = tsig.entries
 
-sig_reco_histo = reco_et_tree_histogram(tsig_cut)
+sig_reco_histo = reco_et_tree_histogram(tsig)
 back_reco_histo = reco_et_tree_histogram(tback)
 
-# None
-layer_weights = [3.411339, 1.0414326, 1.3924104, 3.3474362, 1.4786445]
-shift_et = 0
+# Get layer weights and shift et for given scheme from text file
+layer_weights, shift_et = get_layer_weights_from_txt(15)
+print(layer_weights)
+print(shift_et)
 
-# Bias
-#layer_weights = [1.4866527, 0.2245883, 0.9129165, 1.7364172, 0.9893436]
-#shift_et = 17.115534
-
-#Shift
-#layer_weights = [1.8113599, 0.36242402, 0.99382144, 2.0082638, 1.0719023]
-#shift_et = 14.227625502888978
-
-tsig_cut.set_reco_et_layer_weights(layer_weights)
-tsig_cut.set_reco_et_shift(shift_et)
+tsig.set_reco_et_layer_weights(layer_weights)
+tsig.set_reco_et_shift(shift_et)
 tback.set_reco_et_layer_weights(layer_weights)
 tback.set_reco_et_shift(shift_et)
 
-sig_reco_histo_weighted = reco_et_tree_histogram(tsig_cut)
+sig_reco_histo_weighted = reco_et_tree_histogram(tsig)
 back_reco_histo_weighted = reco_et_tree_histogram(tback)
 
-file_name = 'RecoEt.pdf'
+name_prepend = 'Quartic'
+file_name = name_prepend + 'RecoEt.pdf'
 
 back_reco_histo.Draw()
 back_reco_histo.SetTitle('Reconstructed Et (> 20 GeV True Pt)')
@@ -67,7 +60,7 @@ leg1.Draw()
 c1.Print(file_name + '(')
 
 back_reco_histo_weighted.Draw()
-back_reco_histo_weighted.SetTitle('Network Trained Reconstructed Et (> 20 GeV True Pt)')
+back_reco_histo_weighted.SetTitle(name_prepend + ' Network Trained Reconstructed Et (> 20 GeV True Pt)')
 sig_reco_histo_weighted.Draw('same')
 sig_reco_histo_weighted.SetLineColor(kRed)
 c1.SetLogy()

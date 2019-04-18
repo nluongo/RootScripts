@@ -70,6 +70,8 @@ l3_cells = np.array([0]*9, dtype=np.float32)
 had_cells = np.array([0]*9, dtype=np.float32)
 true_tau_pt = np.array([0], dtype=np.float32)
 true_tau_eta = np.array([0], dtype=np.float32)
+true_tau_charged = np.array([0], dtype=np.int32)
+true_tau_neutral = np.array([0], dtype=np.int32)
 t_ztt_out.Branch('L0CellEt', l0_cells, 'L0CellEt[9]/F')
 t_ztt_out.Branch('L1CellEt', l1_cells, 'L1CellEt[36]/F')
 t_ztt_out.Branch('L2CellEt', l2_cells, 'L2CellEt[36]/F')
@@ -77,6 +79,8 @@ t_ztt_out.Branch('L3CellEt', l3_cells, 'L3CellEt[9]/F')
 t_ztt_out.Branch('HadCellEt', had_cells, 'HadCellEt[9]/F')
 t_ztt_out.Branch('true_tau_pt', true_tau_pt, 'true_tau_pt/F')
 t_ztt_out.Branch('true_tau_eta', true_tau_eta, 'true_tau_eta/F')
+t_ztt_out.Branch('true_tau_charged', true_tau_charged, 'true_tau_charged/I')
+t_ztt_out.Branch('true_tau_neutral', true_tau_neutral, 'true_tau_neutral/I')
 
 for i in range(entries_ztt):
     t_ztt_in.GetEntry(i)
@@ -91,8 +95,12 @@ for i in range(entries_ztt):
     po_3x3_cells_to_array(had_cells, t_ztt_in.scellsHAD)
     true_tau_pt[0] = t_ztt_in.trueTauPt
     true_tau_eta[0] = t_ztt_in.trueTauEta
+    true_tau_charged[0] = t_ztt_in.trueTauNCharged
+    true_tau_neutral[0] = t_ztt_in.trueTauNNeutrals
 
     t_ztt_out.Fill()
+
+f_ztt_in.Close()
 
 f_ztt_out.Write()
 f_ztt_out.Close()
