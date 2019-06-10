@@ -1,76 +1,72 @@
 import ROOT
-from ROOTDefs import build_event_instance, Tree, apply_tree_cut, reco_et_tree_histogram, set_po_tree_parameters
-from NNDefs import get_layer_weights_from_txt
-from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend, kRed
-import numpy as np
-import os
-import math
+from ROOTDefs import sig_and_back_reco_et_histograms, get_po_signal_et_background_files
+from NNDefs import apply_layer_weights
+from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend, TText, kRed
 
 c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
-fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'ztt_Output_formatted.root')
-fsig = ROOT.TFile(fsig_path)
-tsig = Tree(fsig.Get("mytree"))
+tsig, fsig, tback, fback = get_po_signal_et_background_files()
 
-set_po_tree_parameters(tsig)
-sigentries = tsig.entries
+sig_histo, back_histo = sig_and_back_reco_et_histograms(tsig, tback, 120, -20, 100)
 
-fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'output_MB80_formatted.root')
-fback = ROOT.TFile(fback_path)
-tback = Tree(fback.Get("mytree"))
-backentries = tback.entries
+apply_layer_weights(tsig, tback, 21)
+sig_histo_weighted, back_histo_weighted = sig_and_back_reco_et_histograms(tsig, tback, 120, -20, 100)
 
-temp_file_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'temp_file.root')
-temp_file = TFile(temp_file_path, 'recreate')
+apply_layer_weights(tsig, tback, 22)
+sig_histo_bias, back_histo_bias = sig_and_back_reco_et_histograms(tsig, tback, 120, -20, 100)
 
-tsig = apply_tree_cut(tsig, 'event.true_tau_pt > 20000', temp_file)
-set_po_tree_parameters(tsig)
-sigentries = tsig.entries
+name_prepend = 'HundredSigAndBack'
+file_name = name_prepend + 'RecoEtHisto.pdf'
 
-sig_reco_histo = reco_et_tree_histogram(tsig)
-back_reco_histo = reco_et_tree_histogram(tback)
-
-# Get layer weights and shift et for given scheme from text file
-layer_weights, shift_et = get_layer_weights_from_txt(15)
-print(layer_weights)
-print(shift_et)
-
-tsig.set_reco_et_layer_weights(layer_weights)
-tsig.set_reco_et_shift(shift_et)
-tback.set_reco_et_layer_weights(layer_weights)
-tback.set_reco_et_shift(shift_et)
-
-sig_reco_histo_weighted = reco_et_tree_histogram(tsig)
-back_reco_histo_weighted = reco_et_tree_histogram(tback)
-
-name_prepend = 'Quartic'
-file_name = name_prepend + 'RecoEt.pdf'
-
-back_reco_histo.Draw()
-back_reco_histo.SetTitle('Reconstructed Et (> 20 GeV True Pt)')
-sig_reco_histo.Draw('same')
-sig_reco_histo.SetLineColor(kRed)
+back_histo.Draw()
+back_histo.SetTitle('Reconstructed Et')
+back_histo.SetStats(0)
+sig_histo.Draw('same')
+sig_histo.SetLineColor(kRed)
+sig_histo.SetStats(0)
 c1.SetLogy()
 
-leg1 = TLegend(0.7, 0.1, 0.9, 0.2)
-leg1.AddEntry(back_reco_histo, 'Background', 'l')
-leg1.AddEntry(sig_reco_histo, "Signal", "l")
+leg1 = TLegend(0.7, 0.8, 0.9, 0.9)
+leg1.AddEntry(back_histo, 'Background', 'l')
+leg1.AddEntry(sig_histo, "Signal", "l")
 leg1.Draw()
+
+txt1 = TText(0.68, 0.75, 'Signal True Et = 100 GeV')
+txt1.SetNDC()
+txt1.SetTextFont(43)
+txt1.SetTextSize(10)
+#txt1.Draw()
+
+txt2 = TText(0.68, 0.7, 'Background True Et = 0 GeV')
+txt2.SetNDC()
+txt2.SetTextFont(43)
+txt2.SetTextSize(10)
+#txt2.Draw()
 
 c1.Print(file_name + '(')
 
-back_reco_histo_weighted.Draw()
-back_reco_histo_weighted.SetTitle(name_prepend + ' Network Trained Reconstructed Et (> 20 GeV True Pt)')
-sig_reco_histo_weighted.Draw('same')
-sig_reco_histo_weighted.SetLineColor(kRed)
+back_histo_weighted.Draw()
+back_histo_weighted.SetTitle('Network Trained Reconstructed Et')
+back_histo_weighted.SetStats(0)
+sig_histo_weighted.Draw('same')
+sig_histo_weighted.SetLineColor(kRed)
+sig_histo_weighted.SetStats(0)
 c1.SetLogy()
-
-#leg1 = TLegend(0.7, 0.1, 0.9, 0.2)
-#leg1.AddEntry(back_reco_histo, 'Background', 'l')
-#leg1.AddEntry(sig_reco_histo, "Signal", "l")
 leg1.Draw()
+txt1.Draw()
+txt2.Draw()
+
+c1.Print(file_name)
+
+back_histo_bias.Draw()
+back_histo_bias.SetTitle('Network Trained (with Bias) Reconstructed Et')
+back_histo_bias.SetStats(0)
+sig_histo_bias.Draw('same')
+sig_histo_bias.SetLineColor(kRed)
+sig_histo_bias.SetStats(0)
+c1.SetLogy()
+leg1.Draw()
+txt1.Draw()
+txt2.Draw()
 
 c1.Print(file_name + ')')
-
-temp_file.Close()
-os.remove(temp_file_path)

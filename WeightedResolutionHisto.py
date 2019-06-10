@@ -1,32 +1,14 @@
 import ROOT
-from ROOTDefs import build_event_instance, Tree, set_po_tree_parameters, prepare_event
-from NNDefs import get_layer_weights_from_txt
-from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend, kRed, kBlue, kGreen, kMagenta, kOrange
-import numpy as np
-import os
-import math
-
-#temp_file_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'temp_file.root')
-#temp_file = TFile(temp_file_path, 'recreate')
+from ROOTDefs import build_event_instance, Tree, set_po_tree_parameters, prepare_event, get_po_signal_et_background_files
+from NNDefs import get_layer_weights_from_txt, apply_layer_weights
+from ROOT import TGraph, TCanvas, TFile, TLine, TH1F, TGraph2D, TLegend,TText, kRed, kBlue, kGreen, kMagenta, kOrange
 
 c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
-fsig_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'ztt_Output_formatted.root')
-fsig = ROOT.TFile(fsig_path)
-tsig = Tree(fsig.Get("mytree"))
+tsig, fsig, tback, fback = get_po_signal_et_background_files()
 
 # Get layer weights and shift et for given scheme from text file
-layer_weights, shift_et = get_layer_weights_from_txt(1)
-print(layer_weights)
-print(shift_et)
-
-set_po_tree_parameters(tsig)
-sigentries = tsig.entries
-
-fback_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'output_MB80_formatted.root')
-fback = ROOT.TFile(fback_path)
-tback = Tree(fback.Get("mytree"))
-backentries = tback.entries
+apply_layer_weights(tsig, tback, 19)
 
 histo_reco = TH1F("Initial", "Reconstructed Et", 100, -100, 100)
 histo_reco_weighted = TH1F("Weighted", "Weighted Reconstructed Et", 100, -100, 100)
@@ -34,10 +16,7 @@ histo_reco_weighted = TH1F("Weighted", "Weighted Reconstructed Et", 100, -100, 1
 histo_res = TH1F("Initial", "Et Resolution", 100, -100, 100)
 histo_res_weighted = TH1F("Weighted", "Weighted Et Resolution", 100, -100, 100)
 
-sum_et = 0
-num = 0
-
-for i in range(sigentries):
+for i in range(tsig.entries):
     event = prepare_event(tsig, i, 1, 1, 0)
 
     reco_et = event.reco_et
@@ -65,7 +44,7 @@ for i in range(sigentries):
     histo_res.Fill(res_et)
     histo_res_weighted.Fill(res_et_weighted)
 
-name_prepend = ''
+name_prepend = 'SigAndBack'
 file_name = name_prepend + 'EtRes.pdf'
 
 histo_reco.Draw()
@@ -92,8 +71,8 @@ c1.Print(file_name+'(')
 
 histo_res.Draw()
 
-histo_res.SetTitle(name_prepend + ' Signal Reco - True Et')
-histo_res.GetXaxis().SetTitle('Reco - True Et')
+histo_res.SetTitle(name_prepend + ' Signal Reconstructed - True Et')
+histo_res.GetXaxis().SetTitle('Reconstructed - True Et')
 histo_res.GetYaxis().SetTitle('Events')
 histo_res.SetLineColor(kRed)
 histo_res.SetAxisRange(0, 625, 'Y')
@@ -105,8 +84,8 @@ st.SetY1NDC(.6)
 st.SetY2NDC(.75)
 
 leg1 = TLegend(0.1, 0.8, 0.4, 0.9)
-leg1.AddEntry(histo_res, 'Initial Reco - True Et', 'l')
-leg1.AddEntry(histo_res_weighted, 'Network Trained Reco - True Et', 'l')
+leg1.AddEntry(histo_res, 'Initial Reconstructed - True Et', 'l')
+leg1.AddEntry(histo_res_weighted, 'Network Trained Reconstructed - True Et', 'l')
 leg1.Draw()
 
 c1.Print(file_name+')')
