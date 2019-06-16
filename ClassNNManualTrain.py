@@ -9,14 +9,14 @@ c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
 tsig, fsig, tback, fback = get_po_signal_et_background_files()
 
-netcuts = 10000
+netcuts = 100
 
 init_weights = [1, 1, 1, 1, 1]
 l0_weight_range = [i*0.1 for i in range(21)]
 efficiencies = []
 print(l0_weight_range)
 
-for l0_weight in tqdm(l0_weight_range):.2012
+for l0_weight in tqdm(l0_weight_range):
     new_weights = [l0_weight, 1, 1, 1, 1]
     tsig.set_reco_et_layer_weights(new_weights)
     tback.set_reco_et_layer_weights(new_weights)
