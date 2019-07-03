@@ -5,6 +5,11 @@ from ROCCurveDefs import create_roc_counter, roc_efficiencies_from_cuts
 from tqdm import tqdm
 import numpy as np
 
+'''
+Manually "train" weights to minimize the background efficiency at 90% signal efficiency. Not using a neural network
+module because they cannot train on this directly.
+'''
+
 c1 = TCanvas("c1", "Graph Draw Options", 200, 10, 600, 400)
 
 tsig, fsig, tback, fback = get_po_signal_et_background_files()

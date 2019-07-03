@@ -1,16 +1,23 @@
 import ROOT
 from ROOT import TFile, TTree
-from ROOTDefs import Layer, Event, Tree
+from ROOTClassDefs import Layer, Event, Tree
 import numpy as np
 import os
 
-# Read data from ztt_Output file
+'''
+Take raw ET (Eric Torrence) file and create new formatted version
+- Keep only Et and Pt information
+- Keep only true tau Pt from entire truth Lorentz vector
+'''
+
+# Read data from input file
 f_in_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Raw Data Files', 'output_MB80.root')
 f_in = ROOT.TFile(f_in_path)
 t_in = f_in.Get("mytree")
 entries_ztt = t_in.GetEntries()
 
-f_out_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'output_MB80_formatted.root')
+# Create output file
+f_out_path = os.path.join(os.path.expanduser('~'), 'TauTrigger', 'Formatted Data Files', 'NTuples', 'output_MB80_formatted_new.root')
 f_out = TFile(f_out_path, 'recreate')
 t_out = TTree('mytree', 'Formatted ET File')
 
@@ -31,14 +38,14 @@ if hasattr(t_in, 'mc_visibleTau'):
 for i in range(entries_ztt):
     t_in.GetEntry(i)
     for i in range(9):
-        l0_cells[i] = t_in.L0CellEt[i]
-        l3_cells[i] = t_in.L3CellEt[i]
-        had_cells[i] = t_in.HadCellEt[i]
+        l0_cells[i] = t_in.L0CellEt[i] / 1000.
+        l3_cells[i] = t_in.L3CellEt[i] / 1000.
+        had_cells[i] = t_in.HadCellEt[i] / 1000.
     for i in range(39):
-        l1_cells[i] = t_in.L1CellEt[i]
-        l2_cells[i] = t_in.L2CellEt[i]
+        l1_cells[i] = t_in.L1CellEt[i] / 1000.
+        l2_cells[i] = t_in.L2CellEt[i] / 1000.
     if hasattr(t_in, 'mc_visibleTau'):
-        true_tau_pt[0] = t_in.mc_visibleTau.Pt()
+        true_tau_pt[0] = t_in.mc_visibleTau.Pt() / 1000.
 
     t_out.Fill()
 
